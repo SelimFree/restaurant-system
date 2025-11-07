@@ -1,0 +1,17 @@
+# --- Core Web Framework ---
+fastapi[all]
+uvicorn[standard]
+# --- Database (PostgreSQL) ---
+sqlalchemy
+asyncpg
+# --- Caching & Real-time (Redis) ---
+redis[async]
+# --- Authentication & Security (JWT) ---
+passlib[bcrypt]
+python-jose[cryptography]
+# --- Configuration ---
+pydantic-settings
+# --- Testing ---
+pytest
+pytest-asyncio
+httpx

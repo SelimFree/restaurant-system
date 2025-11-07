@@ -1,0 +1,59 @@
+# --- Secrets ---
+.env
+.env.*
+
+# --- Python & FastAPI (Backend) ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+*.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+instance/
+pip-wheel-metadata/
+*.egg-info/
+dist/
+build/
+
+# --- Flutter (Frontend) ---
+# Ignore Flutter build outputs
+/frontend-builds/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+
+# Ignore platform-specific directories
+/android/
+/ios/
+/linux/
+/macos/
+/windows/
+/web/
+
+# Ignore keystores
+*.jks
+*.keystore
+
+# --- Docker ---
+# Ignore local database data if it gets created outside a volume
+postgres_data/
+docker-compose.override.yml
+
+# --- IDE & Editor Config ---
+.vscode/
+.idea/
+*.iml
+*.sublime-project
+*.sublime-workspace
+
+# --- Operating System ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
