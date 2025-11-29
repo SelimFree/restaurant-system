@@ -40,12 +40,6 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
 async def login(user_credentials: UserLogin, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == user_credentials.email))
     user = result.scalars().first()
-
-    if user:
-            print(f"Trying to match input: '{user_credentials.password}'")
-            print(f"Against DB Hash: '{user.hashed_password}'")
-            is_valid = security.verify_password(user_credentials.password, user.hashed_password)
-            print(f"Result: {is_valid}")
             
     if not user or not security.verify_password(user_credentials.password, user.hashed_password):
         raise HTTPException(
