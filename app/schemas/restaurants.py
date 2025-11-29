@@ -16,3 +16,18 @@ class RestaurantRead(RestaurantBase):
     created_at: datetime
     # Note: We usually omit related objects (staff, tables, menus) 
     # from a basic 'read all' schema to avoid huge response payloads.
+
+
+# CREATE
+class RestaurantCreate(BaseModel):
+    name: str
+    address: Optional[str] = None
+    settings: Dict[str, Any] = {}
+
+
+# UPDATE (PATCH)
+# All fields optional
+class RestaurantUpdate(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    settings: Optional[Dict[str, Any]] = None 

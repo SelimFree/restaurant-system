@@ -1,0 +1,109 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from typing import List
+
+from db.database import get_db
+from models.orders import Order
+from models.order_items import OrderItem
+from models.menu_items import MenuItem
+from models.users import User
+
+from schemas.orders import (
+    OrderCreate, OrderRead, OrderUpdate,
+    OrderItemCreate, OrderItemRead
+)
+
+from api.deps import role_required
+
+router = APIRouter()
+
+
+# CREATE ORDER
+@router.post("/orders", response_model=OrderRead)
+async def create_order(
+    order_in: OrderCreate,
+    current_user: User = Depends(role_required(["waiter", "admin"])),
+    db: AsyncSession = Depends(get_db)
+):
+    new_order = Order(
+        table_id=order_in.table_id,
+        waiter_id=order_in.waiter_id,
+        status="created"
+    )
+
+    db.add(new_order)
+    await db.commit()
+    await db.refresh(new_order)
+    return new_order
+
+
+# GET ORDER BY ID
+@router.get("/orders/{order_id}", response_model=OrderRead)
+async def get_order(
+    order_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(role_required(["admin", "waiter", "cook"]))
+):
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalars().first()
+
+    if not order:
+        raise HTTPException(404, "Order not found")
+
+    return order
+
+
+# UPDATE ORDER STATUS
+@router.patch("/orders/{order_id}", response_model=OrderRead)
+async def update_order(
+    order_id: int,
+    data: OrderUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(role_required(["waiter", "cook", "admin"]))
+):
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalars().first()
+    if not order:
+        raise HTTPException(404, "Order not found")
+
+    if data.status:
+        order.status = data.status
+
+    await db.commit()
+    await db.refresh(order)
+    return order
+
+
+# ADD ORDER ITEM
+@router.post("/orders/{order_id}/items", response_model=OrderItemRead)
+async def add_order_item(
+    order_id: int,
+    item_in: OrderItemCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(role_required(["waiter", "admin"]))
+):
+    new_item = OrderItem(
+        order_id=order_id,
+        item_id=item_in.item_id,
+        quantity=item_in.quantity,
+        notes=item_in.notes
+    )
+
+    db.add(new_item)
+    await db.commit()
+    await db.refresh(new_item)
+    return new_item
+
+
+# GET ORDER ITEMS
+@router.get("/orders/{order_id}/items", response_model=List[OrderItemRead])
+async def get_order_items(
+    order_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(role_required(["admin", "waiter", "cook"]))
+):
+    result = await db.execute(
+        select(OrderItem).where(OrderItem.order_id == order_id)
+    )
+    return result.scalars().all()
