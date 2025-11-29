@@ -33,3 +33,8 @@ class OrderItemRead(BaseModel):
 
     class Config:
         orm_mode = True
+
+class OrderItemUpdate(BaseModel):
+    quantity: Optional[int] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None

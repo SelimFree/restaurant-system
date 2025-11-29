@@ -107,3 +107,62 @@ async def get_order_items(
         select(OrderItem).where(OrderItem.order_id == order_id)
     )
     return result.scalars().all()
+
+# UPDATE ORDER ITEM (quantity, status, notes)
+@router.patch("/order-items/{item_id}", response_model=OrderItemRead)
+async def update_order_item(
+    item_id: int,
+    data: OrderItemUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(role_required(["waiter", "cook", "admin"]))
+):
+    result = await db.execute(select(OrderItem).where(OrderItem.id == item_id))
+    item = result.scalars().first()
+
+    if not item:
+        raise HTTPException(404, "Order item not found")
+
+    if data.quantity is not None:
+        item.quantity = data.quantity
+    if data.status is not None:
+        item.status = data.status
+    if data.notes is not None:
+        item.notes = data.notes
+
+    await db.commit()
+    await db.refresh(item)
+    return item
+
+# DELETE ORDER ITEM
+@router.delete("/order-items/{item_id}")
+async def delete_order_item(
+    item_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(role_required(["waiter", "admin"]))
+):
+    result = await db.execute(select(OrderItem).where(OrderItem.id == item_id))
+    item = result.scalars().first()
+
+    if not item:
+        raise HTTPException(404, "Order item not found")
+
+    await db.delete(item)
+    await db.commit()
+
+    return {"message": "Order item deleted"}
+
+# GET SINGLE ORDER ITEM
+@router.get("/order-item/{item_id}", response_model=OrderItemRead)
+async def get_order_item(
+    item_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(role_required(["admin", "waiter", "cook"]))
+):
+    result = await db.execute(select(OrderItem).where(OrderItem.id == item_id))
+    item = result.scalars().first()
+
+    if not item:
+        raise HTTPException(404, "Order item not found")
+
+    return item
+
