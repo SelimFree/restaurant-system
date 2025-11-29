@@ -1,10 +1,11 @@
 from pydantic import BaseModel, EmailStr
 from enum import Enum
 
-class UserRole(str, Enum):
+class UserRole(Enum):
     ADMIN = "admin"
+    MANAGER = "manager"
     WAITER = "waiter"
-    KITCHEN = "kitchen"
+    COOK = "cook"
     CUSTOMER = "customer"
 
 class UserBase(BaseModel):
