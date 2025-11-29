@@ -1,32 +1,47 @@
--- This script runs FIRST and defines the database schema.
--- Yahya: Please define the schema here based on the ER diagram and data model. We can discuss the changes if there are any
+-- Database generated with pgModeler (PostgreSQL Database Modeler).
+-- pgModeler version: 0.9.4
+-- PostgreSQL version: 13.0
+-- Project Site: pgmodeler.io
+-- Model Author: ---
+-- object: admin | type: ROLE --
+-- DROP ROLE IF EXISTS admin;
+-- CREATE ROLE admin WITH 
+-- 	ENCRYPTED PASSWORD 'supersecretpassword';
+-- ddl-end --
 
-/*
--- --- TODO: Define custom types ---
-CREATE TYPE user_role AS ENUM ('admin', 'manager', 'waiter', 'cook');
-CREATE TYPE order_status AS ENUM ('pending', 'confirmed', 'cooking', 'ready', 'served', 'cancelled');
-CREATE TYPE order_item_status AS ENUM ('pending', 'cooking', 'ready', 'served');
 
--- --- TODO: Create tables ---
-CREATE TABLE IF NOT EXISTS users ( ... );
-CREATE TABLE IF NOT EXISTS restaurants ( ... );
-CREATE TABLE IF NOT EXISTS staff ( ... );
-CREATE TABLE IF NOT EXISTS tables ( ... );
-CREATE TABLE IF NOT EXISTS menus ( ... );
-CREATE TABLE IF NOT EXISTS menu_items ( ... );
-CREATE TABLE IF NOT EXISTS item_modifiers ( ... );
-CREATE TABLE IF NOT EXISTS orders ( ... );
-CREATE TABLE IF NOT EXISTS order_items ( ... );
-CREATE TABLE IF NOT EXISTS notifications ( ... );
+-- Database creation must be performed outside a multi lined SQL file. 
+-- These commands were put in this file only as a convenience.
+-- 
+-- object: restaurant_db | type: DATABASE --
+-- DROP DATABASE IF EXISTS restaurant_db;
+-- CREATE DATABASE restaurant_db;
+-- ddl-end --
 
--- --- TODO: Add Indexes for performance ---
-CREATE INDEX ...
-*/
 
--- This table confirms that the init scripts are being executed.
-CREATE TABLE IF NOT EXISTS _init_log (
-    script_name VARCHAR(255) PRIMARY KEY,
-    executed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+-- object: public.user_roles | type: TYPE --
+-- DROP TYPE IF EXISTS public.user_roles CASCADE;
+CREATE TYPE public.user_roles AS
+ENUM ('admin','manager','waiter','kitchen');
+-- ddl-end --
+ALTER TYPE public.user_roles OWNER TO admin;
+-- ddl-end --
+
+-- object: public.users | type: TABLE --
+-- DROP TABLE IF EXISTS public.users CASCADE;
+CREATE TABLE public.users (
+	id integer NOT NULL GENERATED ALWAYS AS IDENTITY ,
+	name varchar(256) NOT NULL,
+	email varchar(256) NOT NULL,
+	phone varchar(64),
+	role public.user_roles NOT NULL,
+	hashed_password varchar(1024) NOT NULL,
+	meta json,
+	CONSTRAINT id_pk PRIMARY KEY (id),
+	CONSTRAINT email_uq UNIQUE (email)
 );
+-- ddl-end --
+ALTER TABLE public.users OWNER TO admin;
+-- ddl-end --
 
-INSERT INTO _init_log (script_name) VALUES ('00-init.sql') ON CONFLICT DO NOTHING;
+

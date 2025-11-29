@@ -26,6 +26,3 @@ INSERT INTO menu_items (menu_id, name, price) VALUES
 (1, 'Cheeseburger', 12.50),
 (1, 'Fries', 4.00);
 */
-
--- Log that this script also ran
-INSERT INTO _init_log (script_name) VALUES ('01-seed.sql') ON CONFLICT DO NOTHING;

@@ -3,10 +3,12 @@ fastapi[all]
 uvicorn[standard]
 # --- Database (PostgreSQL) ---
 sqlalchemy
+psycopg2-binary
 asyncpg
 # --- Caching & Real-time (Redis) ---
 redis[async]
 # --- Authentication & Security (JWT) ---
+bcrypt==3.2.2
 passlib[bcrypt]
 python-jose[cryptography]
 # --- Configuration ---
