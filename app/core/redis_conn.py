@@ -1,7 +1,5 @@
-# File: app/core/redis_conn.py
-
 import redis.asyncio as redis
-from .config import settings
+from core.config import settings
 
 class RedisClient:
     """
