@@ -13,6 +13,8 @@ passlib[bcrypt]
 python-jose[cryptography]
 # --- Configuration ---
 pydantic-settings
+# --- Scheduler ---
+apscheduler
 # --- Testing ---
 pytest
 pytest-asyncio
