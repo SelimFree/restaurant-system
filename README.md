@@ -93,7 +93,7 @@ This project is managed by `docker-compose.yml` and consists of the following se
 | **FastAPI** | `api` | `8000` | `8000` | The Python backend. Handles all API logic and WebSockets. |
 | **PostgreSQL**| `db` | `5432` | `5432` | The main database for persistent storage. |
 | **Redis** | `redis` | `6379` | `6379` | Used for caching and real-time Pub/Sub for WebSockets. |
-| **Worker** | `worker` | `8001` | `8001` | For background tasks. |
+| **Worker** | `worker` | `None` | `None` | For background tasks. |
 
 ## Database Initialization
 
@@ -126,7 +126,7 @@ The `db` service is set up to initialize itself automatically using SQL scripts.
     *(Use this to confirm the API is running)*
 
 * **Real-time WebSocket:**
-    `ws://localhost/ws/orders/{restaurant_id}`
+    `ws://localhost:8000/api/v1/ws/orders/{restaurant_id}?token=AUTH_TOKEN`
 
 * **Frontend Applications (Served by Nginx):**
     * `http://localhost/` (Customer App)
