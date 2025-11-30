@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from typing import List
 
 from db.database import get_db
 from models.orders import Order
 from models.order_items import OrderItem
+from models.menus import Menu
 from models.menu_items import MenuItem
 from models.users import User
 from models.tables import Table
@@ -15,8 +17,8 @@ from schemas.orders import (
     OrderItemCreate, OrderItemRead, OrderStatus, OrderItemUpdate
 )
 from schemas.users import UserRole
-
 from api.deps import role_required
+from services.notifications import notify_restaurant_update, EventType
 
 router = APIRouter()
 
@@ -56,6 +58,12 @@ async def create_order(
     db.add(new_order)
     await db.commit()
     await db.refresh(new_order)
+    
+    await notify_restaurant_update(
+        restaurant_id=table.restaurant_id, 
+        event_type=EventType.ORDER_CREATED, 
+        data=new_order
+    )
     return new_order
 
 
@@ -88,11 +96,23 @@ async def update_order(
     if not order:
         raise HTTPException(404, "Order not found")
 
+    table_query = await db.execute(
+        select(Table).where(Table.id == order.table_id)
+    )
+    
+    table = table_query.scalars().first()
+
     if data.status:
         order.status = data.status.value
 
     await db.commit()
     await db.refresh(order)
+    
+    await notify_restaurant_update(
+        restaurant_id=table.restaurant_id, 
+        event_type=EventType.ORDER_UPDATED, 
+        data=order
+    )
     return order
 
 
@@ -113,6 +133,12 @@ async def add_order_item(
     if not menu_item:
         raise HTTPException(404, "Invalid menu item id")
     
+    menu_query = await db.execute(
+        select(Menu).where(Menu.id == menu_item.menu_id)
+    )
+    
+    menu = menu_query.scalars().first()
+    
     new_item = OrderItem(
         order_id=order_id,
         item_id=item_in.item_id,
@@ -123,6 +149,12 @@ async def add_order_item(
     db.add(new_item)
     await db.commit()
     await db.refresh(new_item)
+    
+    await notify_restaurant_update(
+        restaurant_id=menu.restaurant_id, 
+        event_type=EventType.ITEM_ADDED, 
+        data=new_item
+    )
     return new_item
 
 
@@ -151,6 +183,18 @@ async def update_order_item(
 
     if not item:
         raise HTTPException(404, "Order item not found")
+    
+    order_query = await db.execute(
+        select(Order).where(Order.id == item.order_id)
+    )
+    
+    order = order_query.scalars().first()
+    
+    table_query = await db.execute(
+        select(Table).where(Table.id == order.table_id)
+    )
+    
+    table = table_query.scalars().first()
 
     if data.quantity is not None:
         item.quantity = data.quantity
@@ -161,6 +205,14 @@ async def update_order_item(
 
     await db.commit()
     await db.refresh(item)
+    
+    
+    await notify_restaurant_update(
+        restaurant_id=table.restaurant_id, 
+        event_type=EventType.ITEM_UPDATED, 
+        data=item
+    )
+    
     return item
 
 # DELETE ORDER ITEM
@@ -170,14 +222,39 @@ async def delete_order_item(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.WAITER.value, UserRole.COOK.value]))
 ):
-    result = await db.execute(select(OrderItem).where(OrderItem.id == item_id))
+    stmt = (
+        select(OrderItem)
+        .options(
+            selectinload(OrderItem.order).selectinload(Order.table)
+        )
+        .where(OrderItem.id == item_id)
+    )
+    result = await db.execute(stmt)
     item = result.scalars().first()
 
     if not item:
         raise HTTPException(404, "Order item not found")
 
+    if not item.order or not item.order.table:
+        await db.delete(item)
+        await db.commit()
+        return {"message": "Order item deleted (no notification sent - orphan item)"}
+
+    restaurant_id = item.order.table.restaurant_id
+    order_id = item.order_id
+    deleted_item_id = item.id 
+
     await db.delete(item)
     await db.commit()
+
+    await notify_restaurant_update(
+        restaurant_id=restaurant_id, 
+        event_type=EventType.ITEM_REMOVED, 
+        data={
+            "order_id": order_id, 
+            "item_id": deleted_item_id
+        }
+    )
 
     return {"message": "Order item deleted"}
 
