@@ -8,11 +8,13 @@ from models.orders import Order
 from models.order_items import OrderItem
 from models.menu_items import MenuItem
 from models.users import User
+from models.tables import Table
 
 from schemas.orders import (
     OrderCreate, OrderRead, OrderUpdate,
-    OrderItemCreate, OrderItemRead
+    OrderItemCreate, OrderItemRead, OrderStatus, OrderItemUpdate
 )
+from schemas.users import UserRole
 
 from api.deps import role_required
 
@@ -23,13 +25,32 @@ router = APIRouter()
 @router.post("/orders", response_model=OrderRead)
 async def create_order(
     order_in: OrderCreate,
-    current_user: User = Depends(role_required(["waiter", "admin"])),
+    current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.WAITER.value])),
     db: AsyncSession = Depends(get_db)
 ):
+    
+    table_query = await db.execute(
+        select(Table).where(Table.id == order_in.table_id)
+    )
+    
+    table = table_query.scalars().first()
+
+    if not table:
+        raise HTTPException(404, "Invalid table id")
+    
+    waiter_query = await db.execute(
+        select(User).where(User.id == order_in.waiter_id)
+    )
+    
+    waiter = waiter_query.scalars().first()
+
+    if not waiter:
+        raise HTTPException(404, "Invalid waiter id")
+    
     new_order = Order(
         table_id=order_in.table_id,
         waiter_id=order_in.waiter_id,
-        status="created"
+        status=OrderStatus.CREATED.value
     )
 
     db.add(new_order)
@@ -43,7 +64,7 @@ async def create_order(
 async def get_order(
     order_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(role_required(["admin", "waiter", "cook"]))
+    current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.WAITER.value, UserRole.COOK.value]))
 ):
     result = await db.execute(select(Order).where(Order.id == order_id))
     order = result.scalars().first()
@@ -60,7 +81,7 @@ async def update_order(
     order_id: int,
     data: OrderUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(role_required(["waiter", "cook", "admin"]))
+    current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.WAITER.value, UserRole.COOK.value]))
 ):
     result = await db.execute(select(Order).where(Order.id == order_id))
     order = result.scalars().first()
@@ -68,7 +89,7 @@ async def update_order(
         raise HTTPException(404, "Order not found")
 
     if data.status:
-        order.status = data.status
+        order.status = data.status.value
 
     await db.commit()
     await db.refresh(order)
@@ -81,8 +102,17 @@ async def add_order_item(
     order_id: int,
     item_in: OrderItemCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(role_required(["waiter", "admin"]))
+    current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.WAITER.value]))
 ):
+    menu_item_query = await db.execute(
+        select(MenuItem).where(MenuItem.id == item_in.item_id)
+    )
+    
+    menu_item = menu_item_query.scalars().first()
+    
+    if not menu_item:
+        raise HTTPException(404, "Invalid menu item id")
+    
     new_item = OrderItem(
         order_id=order_id,
         item_id=item_in.item_id,
@@ -101,7 +131,7 @@ async def add_order_item(
 async def get_order_items(
     order_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(role_required(["admin", "waiter", "cook"]))
+    current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.WAITER.value, UserRole.COOK.value]))
 ):
     result = await db.execute(
         select(OrderItem).where(OrderItem.order_id == order_id)
@@ -114,7 +144,7 @@ async def update_order_item(
     item_id: int,
     data: OrderItemUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(role_required(["waiter", "cook", "admin"]))
+    current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.WAITER.value, UserRole.COOK.value]))
 ):
     result = await db.execute(select(OrderItem).where(OrderItem.id == item_id))
     item = result.scalars().first()
@@ -125,7 +155,7 @@ async def update_order_item(
     if data.quantity is not None:
         item.quantity = data.quantity
     if data.status is not None:
-        item.status = data.status
+        item.status = data.status.value
     if data.notes is not None:
         item.notes = data.notes
 
@@ -138,7 +168,7 @@ async def update_order_item(
 async def delete_order_item(
     item_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(role_required(["waiter", "admin"]))
+    current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.WAITER.value, UserRole.COOK.value]))
 ):
     result = await db.execute(select(OrderItem).where(OrderItem.id == item_id))
     item = result.scalars().first()
@@ -156,7 +186,7 @@ async def delete_order_item(
 async def get_order_item(
     item_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(role_required(["admin", "waiter", "cook"]))
+    current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.WAITER.value, UserRole.COOK.value]))
 ):
     result = await db.execute(select(OrderItem).where(OrderItem.id == item_id))
     item = result.scalars().first()

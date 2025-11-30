@@ -16,7 +16,7 @@ class Base(DeclarativeBase):
 
 # PostgreSQL enums
 UserRoleEnum = Enum(
-    "admin", "manager", "waiter", "kitchen", "customer",
+    "admin", "manager", "waiter", "cook", "customer",
     name="user_role",
     create_constraint=False
 )

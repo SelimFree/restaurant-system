@@ -4,7 +4,7 @@ from sqlalchemy.future import select
 from datetime import timedelta
 
 from core.config import settings
-from schemas.users import UserBase, UserCreate, UserLogin, Token
+from schemas.users import UserBase, UserRegister, UserLogin, Token
 from models.users import User
 from core import security
 from db.database import get_db
@@ -12,7 +12,7 @@ from db.database import get_db
 router = APIRouter()
 
 @router.post("/register", response_model=UserBase)
-async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register(user_in: UserRegister, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == user_in.email))
     existing_user = result.scalars().first()
     

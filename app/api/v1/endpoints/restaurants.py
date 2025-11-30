@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List
@@ -6,14 +6,15 @@ from typing import List
 from db.database import get_db
 from models.restaurants import Restaurant
 from models.users import User
-from schemas.restaurants import RestaurantRead
+from schemas.restaurants import RestaurantRead, RestaurantCreate, RestaurantUpdate
+from schemas.users import UserRole
 from api.deps import role_required
 
 router = APIRouter()
 
 @router.get("/restaurants", response_model=List[RestaurantRead])
 async def get_all_restaurants(
-    current_user: User = Depends(role_required(["admin", "manager"])),
+    current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.MANAGER.value])),
     db: AsyncSession = Depends(get_db)
 ):
     stmt = select(Restaurant)
@@ -25,7 +26,7 @@ async def get_all_restaurants(
 @router.get("/restaurants/{restaurant_id}", response_model=RestaurantRead)
 async def get_restaurant(
     restaurant_id: int,
-    current_user: User = Depends(role_required(["admin", "manager"])),
+    current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.MANAGER.value])),
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(
@@ -43,7 +44,7 @@ async def get_restaurant(
 @router.post("/restaurants", response_model=RestaurantRead)
 async def create_restaurant(
     restaurant_in: RestaurantCreate,
-    current_user: User = Depends(role_required(["admin"])),
+    current_user: User = Depends(role_required([UserRole.ADMIN.value])),
     db: AsyncSession = Depends(get_db)
 ):
     new_restaurant = Restaurant(
@@ -64,7 +65,7 @@ async def create_restaurant(
 async def update_restaurant(
     restaurant_id: int,
     data: RestaurantUpdate,
-    current_user: User = Depends(role_required(["admin"])),
+    current_user: User = Depends(role_required([UserRole.ADMIN.value])),
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(
@@ -94,7 +95,7 @@ async def update_restaurant(
 @router.delete("/restaurants/{restaurant_id}")
 async def delete_restaurant(
     restaurant_id: int,
-    current_user: User = Depends(role_required(["admin"])),
+    current_user: User = Depends(role_required([UserRole.ADMIN.value])),
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(
