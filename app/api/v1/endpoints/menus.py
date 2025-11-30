@@ -5,8 +5,10 @@ from typing import List
 
 from db.database import get_db
 from models.menus import Menu
+from models.restaurants import Restaurant
 from models.users import User
 from schemas.menus import MenuCreate, MenuRead, MenuUpdate
+from schemas.users import UserRole
 from api.deps import role_required
 
 router = APIRouter()
@@ -16,7 +18,7 @@ router = APIRouter()
 @router.get("/menus/{restaurant_id}", response_model=List[MenuRead])
 async def get_menus(
     restaurant_id: int,
-    current_user: User = Depends(role_required(["admin", "manager", "waiter"])),
+    current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.MANAGER.value, UserRole.WAITER.value])),
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(select(Menu).where(Menu.restaurant_id == restaurant_id))
@@ -28,13 +30,24 @@ async def get_menus(
 @router.post("/menus", response_model=MenuRead)
 async def create_menu(
     menu_in: MenuCreate,
-    current_user: User = Depends(role_required(["admin", "manager"])),
+    current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.MANAGER.value])),
     db: AsyncSession = Depends(get_db)
 ):
+    
+    restaurant_query = await db.execute(
+        select(Restaurant).where(Restaurant.id == menu_in.restaurant_id)
+    )
+    
+    restaurant = restaurant_query.scalars().first()
+
+    if not restaurant:
+        raise HTTPException(404, "Invalid restaurant id")
+    
     new_menu = Menu(
         restaurant_id=menu_in.restaurant_id,
         name=menu_in.name
     )
+    
     db.add(new_menu)
     await db.commit()
     await db.refresh(new_menu)
@@ -46,7 +59,7 @@ async def create_menu(
 async def update_menu(
     menu_id: int,
     data: MenuUpdate,
-    current_user: User = Depends(role_required(["admin", "manager"])),
+    current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.MANAGER.value])),
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(select(Menu).where(Menu.id == menu_id))
@@ -67,7 +80,7 @@ async def update_menu(
 @router.delete("/menus/{menu_id}")
 async def delete_menu(
     menu_id: int,
-    current_user: User = Depends(role_required(["admin"])),
+    current_user: User = Depends(role_required([UserRole.ADMIN.value])),
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(select(Menu).where(Menu.id == menu_id))

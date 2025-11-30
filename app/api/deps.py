@@ -8,6 +8,7 @@ from typing import List, Optional
 from core.config import settings
 from db.database import get_db
 from models.users import User
+from schemas.users import UserRole
 
 bearer_scheme = HTTPBearer(scheme_name="Bearer Token Login")
 
