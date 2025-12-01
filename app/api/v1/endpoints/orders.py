@@ -14,7 +14,7 @@ from models.tables import Table
 
 from schemas.orders import (
     OrderCreate, OrderRead, OrderUpdate,
-    OrderItemCreate, OrderItemRead, OrderStatus, OrderItemUpdate
+    OrderItemCreate, OrderItemRead, OrderStatus, OrderItemUpdate, OrderCreateMe
 )
 from schemas.users import UserRole
 from api.deps import role_required
@@ -66,6 +66,61 @@ async def create_order(
     )
     return new_order
 
+# CREATE ORDER FOR CURRENT USER
+@router.post("/orders/me", response_model=OrderRead)
+async def create_order_for_me(
+    order_in: OrderCreateMe,
+    current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.WAITER.value])),
+    db: AsyncSession = Depends(get_db)
+):
+    
+    table_query = await db.execute(
+        select(Table).where(Table.id == order_in.table_id)
+    )
+    
+    table = table_query.scalars().first()
+
+    if not table:
+        raise HTTPException(404, "Invalid table id")
+    
+    new_order = Order(
+        table_id=order_in.table_id,
+        waiter_id=current_user.id,
+        status=OrderStatus.CREATED.value
+    )
+
+    db.add(new_order)
+    await db.commit()
+    await db.refresh(new_order)
+    
+    await notify_restaurant_update(
+        restaurant_id=table.restaurant_id, 
+        event_type=EventType.ORDER_CREATED, 
+        data=new_order
+    )
+    return new_order
+
+# GET ORDERS 
+@router.get("/orders", response_model=OrderRead)
+async def get_orders(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.COOK.value]))
+):
+    result = await db.execute(select(Order))
+    orders = result.scalars().all()
+
+    return orders
+
+# GET ORDER BY CURRENT USER
+@router.get("/orders/me", response_model=List[OrderRead])
+async def get_orders_for_me(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.WAITER.value]))
+):
+    result = await db.execute(select(Order).where(Order.waiter_id == current_user.id))
+    orders = result.scalars().all()
+
+    return orders
 
 # GET ORDER BY ID
 @router.get("/orders/{order_id}", response_model=OrderRead)

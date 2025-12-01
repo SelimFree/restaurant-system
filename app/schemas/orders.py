@@ -18,6 +18,9 @@ class OrderItemStatus(Enum):
 class OrderCreate(BaseModel):
     table_id: int
     waiter_id: int
+    
+class OrderCreateMe(BaseModel):
+    table_id: int
 
 class OrderUpdate(BaseModel):
     status: Optional[OrderStatus] = None
