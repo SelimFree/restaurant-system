@@ -101,7 +101,7 @@ async def create_order_for_me(
     return new_order
 
 # GET ORDERS 
-@router.get("/orders", response_model=OrderRead)
+@router.get("/orders", response_model=List[OrderRead])
 async def get_orders(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(role_required([UserRole.ADMIN.value, UserRole.COOK.value]))
